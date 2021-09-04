@@ -34,98 +34,105 @@
 
 /* Author: Wim Meeussen */
 
-#include <kdl/frames_io.hpp>
+#include "multi_robot_state_publisher/robot_state_publisher.h"
+
+#include <iterator>
+#include <map>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include <geometry_msgs/TransformStamped.h>
+#include <kdl/frames_io.hpp>
+#include <kdl_parser/kdl_parser.hpp>
+#include <ros/ros.h>
 #include <tf2_kdl/tf2_kdl.h>
 
-#include "robot_state_publisher/robot_state_publisher.h"
-
-using namespace std;
-using namespace ros;
-
-namespace robot_state_publisher {
-
-RobotStatePublisher::RobotStatePublisher(const KDL::Tree& tree, const urdf::Model& model)
-  : model_(model)
+namespace multi_robot_state_publisher
 {
+RobotStatePublisher::RobotStatePublisher(urdf::Model* model) : model_{ *model }
+{
+  KDL::Tree tree;
+  if (!kdl_parser::treeFromUrdfModel(this->model_, tree))
+  {
+    ROS_ERROR("Failed to extract KDL Tree from URDF.");
+    throw std::invalid_argument{ "model" };
+  }
   // walk the tree and add segments to segments_
-  addChildren(tree.getRootSegment());
+  this->addChildren(tree.getRootSegment());
 }
 
 // add children to correct maps
 void RobotStatePublisher::addChildren(const KDL::SegmentMap::const_iterator segment)
 {
-  const std::string& root = GetTreeElementSegment(segment->second).getName();
+  const auto& root{ GetTreeElementSegment(segment->second).getName() };
 
-  const std::vector<KDL::SegmentMap::const_iterator>& children = GetTreeElementChildren(segment->second);
-  for (unsigned int i=0; i<children.size(); i++) {
-    const KDL::Segment& child = GetTreeElementSegment(children[i]->second);
-    SegmentPair s(GetTreeElementSegment(children[i]->second), root, child.getName());
-    if (child.getJoint().getType() == KDL::Joint::None) {
-      if (model_.getJoint(child.getJoint().getName()) && model_.getJoint(child.getJoint().getName())->type == urdf::Joint::FLOATING) {
-        ROS_INFO("Floating joint. Not adding segment from %s to %s. This TF can not be published based on joint_states info", root.c_str(), child.getName().c_str());
+  const auto& children{ GetTreeElementChildren(segment->second) };
+  for (unsigned int i{ 0 }; i < children.size(); i++)
+  {
+    const auto& child{ GetTreeElementSegment(children[i]->second) };
+    SegmentPair s{ GetTreeElementSegment(children[i]->second), root, child.getName() };
+    if (child.getJoint().getType() == KDL::Joint::None)
+    {
+      if (model_.getJoint(child.getJoint().getName()) &&
+          model_.getJoint(child.getJoint().getName())->type == urdf::Joint::FLOATING)
+      {
+        ROS_INFO("Floating joint. Not adding segment from %s to %s. This TF can not be published based on joint_states "
+                 "info",
+                 root.c_str(), child.getName().c_str());
       }
-      else {
-        segments_fixed_.insert(make_pair(child.getJoint().getName(), s));
+      else
+      {
+        segments_fixed_.insert(std::make_pair(child.getJoint().getName(), s));
         ROS_DEBUG("Adding fixed segment from %s to %s", root.c_str(), child.getName().c_str());
       }
     }
-    else {
-      segments_.insert(make_pair(child.getJoint().getName(), s));
+    else
+    {
+      segments_.insert(std::make_pair(child.getJoint().getName(), s));
       ROS_DEBUG("Adding moving segment from %s to %s", root.c_str(), child.getName().c_str());
     }
     addChildren(children[i]);
   }
 }
 
-
-// publish moving transforms
-void RobotStatePublisher::publishTransforms(const map<string, double>& joint_positions, const Time& time, const std::string& tf_prefix)
+geometry_msgs::TransformStamped RobotStatePublisher::getTransform(const RobotStatePublisher::SegmentPair& pair,
+                                                                  const KDL::Frame& frame, const std::string& tf_prefix,
+                                                                  const ros::Time& time)
 {
-  ROS_DEBUG("Publishing transforms for moving joints");
-  std::vector<geometry_msgs::TransformStamped> tf_transforms;
-
-  // loop over all joints
-  for (map<string, double>::const_iterator jnt=joint_positions.begin(); jnt != joint_positions.end(); jnt++) {
-    std::map<std::string, SegmentPair>::const_iterator seg = segments_.find(jnt->first);
-    if (seg != segments_.end()) {
-      geometry_msgs::TransformStamped tf_transform = tf2::kdlToTransform(seg->second.segment.pose(jnt->second));
-      tf_transform.header.stamp = time;
-      tf_transform.header.frame_id = tf::resolve(tf_prefix, seg->second.root);
-      tf_transform.child_frame_id = tf::resolve(tf_prefix, seg->second.tip);
-      tf_transforms.push_back(tf_transform);
-    }
-    else {
-      ROS_WARN_THROTTLE(10, "Joint state with name: \"%s\" was received but not found in URDF", jnt->first.c_str());
-    }
-  }
-  tf_broadcaster_.sendTransform(tf_transforms);
+  auto tf_transform{ tf2::kdlToTransform(frame) };
+  tf_transform.header.stamp = time;
+  tf_transform.header.frame_id = tf::resolve(tf_prefix, pair.root);
+  tf_transform.child_frame_id = tf::resolve(tf_prefix, pair.tip);
+  return tf_transform;
 }
 
-// publish fixed transforms
-void RobotStatePublisher::publishFixedTransforms(const std::string& tf_prefix, bool use_tf_static)
+void RobotStatePublisher::getTransforms(const std::map<std::string, double>& joint_positions,
+                                        const std::string& tf_prefix, const ros::Time& time,
+                                        std::vector<geometry_msgs::TransformStamped>* destination)
 {
-  ROS_DEBUG("Publishing transforms for fixed joints");
-  std::vector<geometry_msgs::TransformStamped> tf_transforms;
-  geometry_msgs::TransformStamped tf_transform;
-
-  // loop over all fixed segments
-  for (map<string, SegmentPair>::const_iterator seg=segments_fixed_.begin(); seg != segments_fixed_.end(); seg++) {
-    geometry_msgs::TransformStamped tf_transform = tf2::kdlToTransform(seg->second.segment.pose(0));
-    tf_transform.header.stamp = ros::Time::now();
-    if (!use_tf_static) {
-      tf_transform.header.stamp += ros::Duration(0.5);
+  for (const auto& [name, position] : joint_positions)
+  {
+    if (auto seg{ segments_.find(name) }; seg != segments_.end())
+    {
+      destination->emplace_back(getTransform(seg->second, seg->second.segment.pose(position), tf_prefix, time));
     }
-    tf_transform.header.frame_id = tf::resolve(tf_prefix, seg->second.root);
-    tf_transform.child_frame_id = tf::resolve(tf_prefix, seg->second.tip);
-    tf_transforms.push_back(tf_transform);
+    else
+    {
+      ROS_WARN_THROTTLE(10, "Joint state with name: \"%s\" was received but not found in URDF", name.c_str());
+    }
   }
-  if (use_tf_static) {
-    static_tf_broadcaster_.sendTransform(tf_transforms);
-  }
-  else {
-    tf_broadcaster_.sendTransform(tf_transforms);
-  }
+  this->getFixedTransforms(tf_prefix, time, destination);
 }
 
+void RobotStatePublisher::getFixedTransforms(const std::string& tf_prefix, const ros::Time& time,
+                                             std::vector<geometry_msgs::TransformStamped>* destination) const
+{
+  for (const auto& [name, segment] : this->segments_fixed_)
+  {
+    destination->emplace_back(getTransform(segment, segment.segment.pose(0), tf_prefix, time));
+  }
 }
+}  // namespace multi_robot_state_publisher

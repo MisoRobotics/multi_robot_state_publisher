@@ -32,79 +32,95 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <gtest/gtest.h>
-
-#include <urdf/model.h>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
 
 #include <kdl_parser/kdl_parser.hpp>
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <urdf/model.h>
 
-#include "robot_state_publisher/joint_state_listener.h"
-#include "robot_state_publisher/robot_state_publisher.h"
+#include "multi_robot_state_publisher/joint_state_listener.h"
+#include "multi_robot_state_publisher/robot_state_publisher.h"
+#include <gtest/gtest.h>
 
-namespace robot_state_publisher_test
+using multi_robot_state_publisher::JointStateListener;
+using multi_robot_state_publisher::MimicMap;
+
+namespace multi_robot_state_publisher_test
 {
-class AccessibleJointStateListener : public robot_state_publisher::JointStateListener
+class AccessibleJointStateListener : public JointStateListener
 {
 public:
-  AccessibleJointStateListener(
-    const KDL::Tree& tree, const MimicMap& m, const urdf::Model& model) :
-      robot_state_publisher::JointStateListener(tree, m, model)
+  AccessibleJointStateListener(std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster,
+                               std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_tf_broadcaster,
+                               const KDL::Tree& tree, MimicMap mimic_map, urdf::Model model)
+    : JointStateListener{ tf_broadcaster, static_tf_broadcaster, tree, std::move(mimic_map), std::move(model) }
   {
   }
 
-  bool usingTfStatic() const {
+  bool usingTfStatic() const
+  {
     return use_tf_static_;
   }
 };
 
-class AccessibleRobotStatePublisher : public robot_state_publisher::RobotStatePublisher
+class AccessibleRobotStatePublisher : public multi_robot_state_publisher::RobotStatePublisher
 {
 public:
-
-  AccessibleRobotStatePublisher(const KDL::Tree& tree, const urdf::Model& model) :
-    robot_state_publisher::RobotStatePublisher(tree, model)
+  AccessibleRobotStatePublisher(std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster,
+                                std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_tf_broadcaster,
+                                const KDL::Tree& tree, urdf::Model model)
+    : multi_robot_state_publisher::RobotStatePublisher{ tf_broadcaster, static_tf_broadcaster, std::move(tree),
+                                                        std::move(model) }
   {
   }
 
-  const urdf::Model & getModel() const {
+  const urdf::Model& getModel() const
+  {
     return model_;
   }
 };
-}  // robot_state_publisher_test 
+}  // namespace multi_robot_state_publisher_test
 
 TEST(TestRobotStatePubSubclass, robot_state_pub_subclass)
 {
+  auto tf_broadcaster{ std::make_shared<tf2_ros::TransformBroadcaster>() };
+  auto static_tf_broadcaster{ std::make_shared<tf2_ros::StaticTransformBroadcaster>() };
   urdf::Model model;
   model.initParam("robot_description");
   KDL::Tree tree;
-  if (!kdl_parser::treeFromUrdfModel(model, tree)){
+  if (!kdl_parser::treeFromUrdfModel(model, tree))
+  {
     ROS_ERROR("Failed to extract kdl tree from xml robot description");
     FAIL();
   }
 
   MimicMap mimic;
 
-  for(std::map< std::string, urdf::JointSharedPtr >::iterator i = model.joints_.begin(); i != model.joints_.end(); i++){
-    if(i->second->mimic){
-      mimic.insert(make_pair(i->first, i->second->mimic));
+  for (const auto& [name, joint] : model.joints_)
+  {
+    if (joint->mimic)
+    {
+      mimic.insert(std::make_pair(name, joint->mimic));
     }
   }
 
-  robot_state_publisher_test::AccessibleRobotStatePublisher state_pub(tree, model);
-
+  multi_robot_state_publisher_test::AccessibleRobotStatePublisher state_pub{ tf_broadcaster, static_tf_broadcaster,
+                                                                             tree, model };
   EXPECT_EQ(model.name_, state_pub.getModel().name_);
   EXPECT_EQ(model.root_link_, state_pub.getModel().root_link_);
 
-  robot_state_publisher_test::AccessibleJointStateListener state_listener(tree, mimic, model);
+  multi_robot_state_publisher_test::AccessibleJointStateListener state_listener{ tf_broadcaster, static_tf_broadcaster,
+                                                                                 tree, mimic, model };
   EXPECT_TRUE(state_listener.usingTfStatic());
 }
 
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "test_subclass");
-  testing::InitGoogleTest(&argc, argv);
-
-  int res = RUN_ALL_TESTS();
-
-  return res;
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
