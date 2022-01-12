@@ -54,6 +54,61 @@ Changelog for package robot_state_publisher
   Add a generic .editorconfig for auto formatting.
 * Contributors: Ryan Sinnet
 
+Forthcoming
+-----------
+* 1.14.0
+* Add changelog for chippy-1.14.0
+  Add changelog for chippy-1.14.0.
+* RAD-96: Update for noetic
+  Update package dependencies and add conditional to CMakeLists.txt.
+* Migrate to Python 3
+  Update to work with Python 3 and Noetic.
+* Bump version to 2.0.0
+  Bump major version for next release.
+* Merge pull request `#1 <https://github.com/MisoRobotics/multi_robot_state_publisher/issues/1>`_ from rsinnet/kinetic-devel
+  Create multi_robot_state_publisher
+* Disable tests for now
+  Disable tests after the refactor. They need to be updated, but
+  everything is working and probably won't need to make any additional
+  changes so not much value in the tests at this point since the tests
+  established already that the algorithms are correct.
+* Rename a confusing variable
+  Rename last_publish_time\_ to last_update_time\_ now that responsibilities
+  have been shifted around.
+* Add docstrings to public members
+  Add docstrings for classes and public members.
+* Refactor data flow and execution model
+  Create a new class to hold all robots. Change publishing to happen once
+  in main loop. Publish all TFs in one message.
+* Add README.md
+  Add a README which describes the usage of the new node.
+* Refactor data flow and execution model
+  Create a new class to hold all robots. Change publishing to happen once
+  in main loop. Publish all TFs in one message.
+* Update tests
+  Update tests for new package name and interface changes.
+* Clean up main function
+  Use a range-based for loop in the main function.
+* Move JointStateListener to library
+  Move code to a library and add an separate executable with the main
+  function.
+* Update to new namespace
+  Move code to multi_robot_state_publisher namespace.
+* Update CMakeLists.txt
+  Update required CMake version. Update compiler definitions. Change
+  project name.
+* Update package.xml to Package Format 2
+  Upgrade to newer catkin package format. Update maintainers.
+* Format URDF files
+  Save them with auto-formatting with no changes.
+* Add .clang-format and apply
+  Add formatting file for clang-format and apply to all relevant files.
+* Add .cmake-format
+  Add style file for CMake and run it on CMakeLists.txt.
+* Add .editorconfig file
+  Add a generic .editorconfig for auto formatting.
+* Contributors: Ryan Sinnet, Zach Zweig Vinegar
+
 1.13.7 (2019-08-27)
 -------------------
 * Remove treefksolver completely from the repository. (`#100 <https://github.com/ros/robot_state_publisher/issues/100>`_) (`#101 <https://github.com/ros/robot_state_publisher/issues/101>`_)
