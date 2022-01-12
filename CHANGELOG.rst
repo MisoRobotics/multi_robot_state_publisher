@@ -54,8 +54,8 @@ Changelog for package robot_state_publisher
   Add a generic .editorconfig for auto formatting.
 * Contributors: Ryan Sinnet
 
-Forthcoming
------------
+10.1.0 (2022-01-12)
+-------------------
 * 1.14.0
 * Add changelog for chippy-1.14.0
   Add changelog for chippy-1.14.0.
