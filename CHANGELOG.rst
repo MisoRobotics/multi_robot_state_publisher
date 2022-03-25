@@ -54,6 +54,15 @@ Changelog for package robot_state_publisher
   Add a generic .editorconfig for auto formatting.
 * Contributors: Ryan Sinnet
 
+Forthcoming
+-----------
+* Merge branch 'user/rsinnet/RAD-171' into develop
+* RAD-171: Add labeling workflow
+  Add a labeling workflow to apply the `flippy` label.
+* Merge pull request `#3 <https://github.com/MisoRobotics/multi_robot_state_publisher/issues/3>`_ from MisoRobotics/master
+  Backmerge master into develop for chippy-10.1.0
+* Contributors: Ryan Sinnet, Zach Zweig Vinegar
+
 10.1.0 (2022-01-12)
 -------------------
 * 1.14.0
