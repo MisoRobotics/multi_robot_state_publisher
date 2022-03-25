@@ -54,8 +54,8 @@ Changelog for package robot_state_publisher
   Add a generic .editorconfig for auto formatting.
 * Contributors: Ryan Sinnet
 
-Forthcoming
------------
+10.1.1 (2022-03-25)
+-------------------
 * Merge branch 'user/rsinnet/RAD-171' into develop
 * RAD-171: Add labeling workflow
   Add a labeling workflow to apply the `flippy` label.
