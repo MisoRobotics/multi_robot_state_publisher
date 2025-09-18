@@ -54,6 +54,15 @@ Changelog for package robot_state_publisher
   Add a generic .editorconfig for auto formatting.
 * Contributors: Ryan Sinnet
 
+Forthcoming
+-----------
+* Merge pull request `#7 <https://github.com/MisoRobotics/multi_robot_state_publisher/issues/7>`_ from MisoRobotics/user/ajensen/update/codeowners
+  IN-2177: Update CODEOWNERS
+* Update CODEOWNERS
+* Merge pull request `#6 <https://github.com/MisoRobotics/multi_robot_state_publisher/issues/6>`_ from MisoRobotics/master
+  Backmerge master into develop for chippy-10.1.1
+* Contributors: Arild Jensen, Sana Sarfraz, Zach Zweig Vinegar
+
 10.1.1 (2022-03-25)
 -------------------
 * Merge branch 'user/rsinnet/RAD-171' into develop
