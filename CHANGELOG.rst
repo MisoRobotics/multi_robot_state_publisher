@@ -54,8 +54,8 @@ Changelog for package robot_state_publisher
   Add a generic .editorconfig for auto formatting.
 * Contributors: Ryan Sinnet
 
-Forthcoming
------------
+10.2.0 (2025-09-18)
+-------------------
 * Merge pull request `#7 <https://github.com/MisoRobotics/multi_robot_state_publisher/issues/7>`_ from MisoRobotics/user/ajensen/update/codeowners
   IN-2177: Update CODEOWNERS
 * Update CODEOWNERS
