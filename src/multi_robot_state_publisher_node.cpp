@@ -113,6 +113,8 @@ private:
   std::vector<geometry_msgs::TransformStamped> transforms_;
   std::vector<geometry_msgs::TransformStamped> static_transforms_;
 
+  ros::Time last_publish_time_;
+
   void addRobots(const std::vector<std::string>& robots);
 };
 
@@ -135,6 +137,9 @@ void MultiRobotStatePublisher::addRobots(const std::vector<std::string>& robots)
 
 void MultiRobotStatePublisher::publish(const ros::Time& time, bool publish_tf_static)
 {
+  if (!publish_tf_static && time == this->last_publish_time_)
+    return;
+
   const auto& listeners{ publish_tf_static ? this->static_non_listeners_ : this->listeners_ };
   auto& transforms{ publish_tf_static ? this->static_transforms_ : this->transforms_ };
 
@@ -156,6 +161,7 @@ void MultiRobotStatePublisher::publish(const ros::Time& time, bool publish_tf_st
   else
   {
     this->tf_broadcaster_.sendTransform(transforms);
+    this->last_publish_time_ = time;
   }
 }
 

@@ -73,26 +73,29 @@ void RobotStatePublisher::addChildren(const KDL::SegmentMap::const_iterator segm
   for (unsigned int i{ 0 }; i < children.size(); i++)
   {
     const auto& child{ GetTreeElementSegment(children[i]->second) };
-    SegmentPair s{ GetTreeElementSegment(children[i]->second), root, child.getName() };
-    if (child.getJoint().getType() == KDL::Joint::None)
+    if (!root.empty())  // skip KDL virtual root — it has no real TF frame name
     {
-      if (model_.getJoint(child.getJoint().getName()) &&
-          model_.getJoint(child.getJoint().getName())->type == urdf::Joint::FLOATING)
+      SegmentPair s{ GetTreeElementSegment(children[i]->second), root, child.getName() };
+      if (child.getJoint().getType() == KDL::Joint::None)
       {
-        ROS_INFO("Floating joint. Not adding segment from %s to %s. This TF can not be published based on joint_states "
-                 "info",
-                 root.c_str(), child.getName().c_str());
+        if (model_.getJoint(child.getJoint().getName()) &&
+            model_.getJoint(child.getJoint().getName())->type == urdf::Joint::FLOATING)
+        {
+          ROS_INFO("Floating joint. Not adding segment from %s to %s. This TF can not be published based on joint_states "
+                   "info",
+                   root.c_str(), child.getName().c_str());
+        }
+        else
+        {
+          segments_fixed_.insert(std::make_pair(child.getJoint().getName(), s));
+          ROS_DEBUG("Adding fixed segment from %s to %s", root.c_str(), child.getName().c_str());
+        }
       }
       else
       {
-        segments_fixed_.insert(std::make_pair(child.getJoint().getName(), s));
-        ROS_DEBUG("Adding fixed segment from %s to %s", root.c_str(), child.getName().c_str());
+        segments_.insert(std::make_pair(child.getJoint().getName(), s));
+        ROS_DEBUG("Adding moving segment from %s to %s", root.c_str(), child.getName().c_str());
       }
-    }
-    else
-    {
-      segments_.insert(std::make_pair(child.getJoint().getName(), s));
-      ROS_DEBUG("Adding moving segment from %s to %s", root.c_str(), child.getName().c_str());
     }
     addChildren(children[i]);
   }
